@@ -2,72 +2,421 @@
 #include <vector>
 #include <iostream>
 #include "SurfaceAngleDistance.h"
+#include <fstream>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
 
 
+using namespace std;
 
 
 	/*
 	Computes the minimum angle difference between two surfaces
 	*/
-double surface_angle_distance::surface_angle_distance_extended(std::vector<double> s1_points, std::vector<int> s1_simplices, std::vector<double> s2_points, std::vector<int> s2_simplices, double epsilon, double delta, std::vector<double> & s1_angle_distances, std::vector<double> & s2_angle_distances){
+double surface_angle_distance::surface_angle_distance_extended(std::vector<double> s1_points, std::vector<int> s1_simplices, std::vector<double> s2_points, std::vector<int> s2_simplices, double epsilon, double delta, double width, std::vector<double> & s1_angle_distances, std::vector<double> & s2_angle_distances, bool num_simplices_histogram, bool area_simplices_histogram, double print_area_angle_cutoff, std::string prefix){
 		
 		s1_angle_distances.clear();
 		s2_angle_distances.clear();
 
 		std::vector<segmentedTriangle> segmented_triangles_s1;
 		std::vector<segmentedTriangle> segmented_triangles_s2;
-
-
+		
 		create_segmented_triangles(s1_points, s1_simplices, segmented_triangles_s1, delta);
 		create_segmented_triangles(s2_points, s2_simplices, segmented_triangles_s2, delta);
+		
+		double total_area_s1 = 0;
+		double total_edge_length_s1 = 0;
+		int number_of_segmented_triangles_s1 = 0;
 
-		surface_to_surface_extended(segmented_triangles_s1, segmented_triangles_s2, epsilon);
-		surface_to_surface_extended(segmented_triangles_s2, segmented_triangles_s1, epsilon);
+		for (int n = 0; n < segmented_triangles_s1.size(); n++){
+			if (segmented_triangles_s1[n].valid){
+				std::vector<double> vec1;
+				std::vector<double> vec2;
+				std::vector<double> vec3;
 
+				create_vectors_from_triangle(segmented_triangles_s1[n].boundary_points, vec1, vec2, vec3);
+				total_area_s1 += .5 * magnitude_cross_product(vec1, vec2);
+				number_of_segmented_triangles_s1 += segmented_triangles_s1[n].simplices.size() / 3;
+
+				for (int m = 0; m < segmented_triangles_s1[n].simplices.size(); m += 3){
+					std::vector<double> temp_triangle;
+					for (int p = 0; p < 3; p++){
+						temp_triangle.push_back(segmented_triangles_s1[n].points[3 * segmented_triangles_s1[n].simplices[m + p] + 0]);
+						temp_triangle.push_back(segmented_triangles_s1[n].points[3 * segmented_triangles_s1[n].simplices[m + p] + 1]);
+						temp_triangle.push_back(segmented_triangles_s1[n].points[3 * segmented_triangles_s1[n].simplices[m + p] + 2]);
+					}
+					total_edge_length_s1 += edge_length(temp_triangle);
+				}
+			}
+		}
+		double average_area_s1 = total_area_s1 / number_of_segmented_triangles_s1;
+		double average_edge_length_s1 = total_edge_length_s1 / number_of_segmented_triangles_s1;
+
+		double total_area_s2 = 0;
+		double total_edge_length_s2 = 0;
+		double number_of_segmented_triangles_s2 = 0;
+
+		for (int n = 0; n < segmented_triangles_s2.size(); n++){
+			if (segmented_triangles_s2[n].valid){
+				std::vector<double> vec1;
+				std::vector<double> vec2;
+				std::vector<double> vec3;
+				create_vectors_from_triangle(segmented_triangles_s2[n].boundary_points, vec1, vec2, vec3);
+				total_area_s2 += .5 * magnitude_cross_product(vec1, vec2);
+				number_of_segmented_triangles_s2 += segmented_triangles_s2[n].simplices.size() / 3;
+
+
+				for (int m = 0; m < segmented_triangles_s2[n].simplices.size(); m += 3){
+					std::vector<double> temp_triangle;
+					for (int p = 0; p < 3; p++){
+						temp_triangle.push_back(segmented_triangles_s2[n].points[3 * segmented_triangles_s2[n].simplices[m + p] + 0]);
+						temp_triangle.push_back(segmented_triangles_s2[n].points[3 * segmented_triangles_s2[n].simplices[m + p] + 1]);
+						temp_triangle.push_back(segmented_triangles_s2[n].points[3 * segmented_triangles_s2[n].simplices[m + p] + 2]);
+					}
+					total_edge_length_s2 += edge_length(temp_triangle);
+				}
+			}
+		}
+		double average_area_s2 = total_area_s2 / number_of_segmented_triangles_s2;
+		double average_edge_length_s2 = total_edge_length_s2 / number_of_segmented_triangles_s2;
+
+		double width_s1 = 0;
+		double width_s2 = 0;
+
+		if (width > 0){
+			width_s1 = width;
+			width_s2 = width;
+		}else{
+			width_s1 = 3 * sqrt(average_area_s1 * 4 / sqrt(3));
+			width_s2 = 3 * sqrt(average_area_s2 * 4 / sqrt(3));
+		}
+
+		std::cout << std::endl;
+		std::cout << "Average area of the segmented triangles in surface 1 is: " << average_area_s1 << std::endl;
+		std::cout << "Average edge length of the segmented triangles in surface 1 is: " << average_edge_length_s1 << std::endl;
+		std::cout << "Number of segmented triangles in surface 1 is: " << number_of_segmented_triangles_s1 << std::endl;
+		std::cout << "Edge length of surface 1 regular grid: " << width_s1 << std::endl;
+
+		double average_number_of_boxes = 0;
+		TriangleCellIntersection s1_grid(s1_points, s1_simplices, width_s1, average_number_of_boxes);
+		std::cout << "Average number of boxes intersected in surface 1: " << average_number_of_boxes << std::endl << std::endl;
+
+		std::cout << "Average area of the segmented triangles in surface 2 is: " << average_area_s2 << std::endl;
+		std::cout << "Average edge length of the segmented triangles in surface 2 is: " << average_edge_length_s2 << std::endl;
+		std::cout << "Number of segmented triangles in surface 2 is: " << number_of_segmented_triangles_s2 << std::endl;
+		std::cout << "Edge length of surface 2 regular grid: " << width_s2 << std::endl;
+
+		TriangleCellIntersection s2_grid(s2_points, s2_simplices, width_s2, average_number_of_boxes);
+		std::cout << "Average number of boxes intersected in surface 2: " << average_number_of_boxes << std::endl << std::endl;
+
+		//std::cout << "0%" << std::endl; 
+		surface_to_surface_extended(segmented_triangles_s1, segmented_triangles_s2, &s2_grid, epsilon, 1);
+		//std::cout << "50%" << std::endl;
+		surface_to_surface_extended(segmented_triangles_s2, segmented_triangles_s1, &s1_grid, epsilon, 2);
+		//std::cout << "100%" << std::endl;
+		
 		double max_angle = -1;
 
 		//Finds the maximum angle
 		for (int x = 0; x < segmented_triangles_s1.size(); x++){
 			double max_of_simplex = -1;
-			for (int y = 0; y < segmented_triangles_s1[x].angle_diff_of_closest.size(); y++){
-				if (max_angle < segmented_triangles_s1[x].angle_diff_of_closest[y]){
-					max_angle = segmented_triangles_s1[x].angle_diff_of_closest[y];
+			if (segmented_triangles_s1[x].valid){
+				for (int y = 0; y < segmented_triangles_s1[x].angle_diff_of_closest.size(); y++){
+					if (max_angle < segmented_triangles_s1[x].angle_diff_of_closest[y]){
+						max_angle = segmented_triangles_s1[x].angle_diff_of_closest[y];
+					}
+					if (max_of_simplex < segmented_triangles_s1[x].angle_diff_of_closest[y]){
+						max_of_simplex = segmented_triangles_s1[x].angle_diff_of_closest[y];
+					}
 				}
-				if (max_of_simplex < segmented_triangles_s1[x].angle_diff_of_closest[y]){
-					max_of_simplex = segmented_triangles_s1[x].angle_diff_of_closest[y];
-				}
+				s1_angle_distances.push_back(max_of_simplex);
 			}
-			s1_angle_distances.push_back(max_of_simplex);
 		}
 		for (int x = 0; x < segmented_triangles_s2.size(); x++){
 			double max_of_simplex = -1;
-			for (int y = 0; y < segmented_triangles_s2[x].angle_diff_of_closest.size(); y++){
-				if (max_angle < segmented_triangles_s2[x].angle_diff_of_closest[y]){
-					max_angle = segmented_triangles_s2[x].angle_diff_of_closest[y];
+			if (segmented_triangles_s2[x].valid){
+				for (int y = 0; y < segmented_triangles_s2[x].angle_diff_of_closest.size(); y++){
+					if (max_angle < segmented_triangles_s2[x].angle_diff_of_closest[y]){
+						max_angle = segmented_triangles_s2[x].angle_diff_of_closest[y];
+					}
+					if (max_of_simplex < segmented_triangles_s2[x].angle_diff_of_closest[y]){
+						max_of_simplex = segmented_triangles_s2[x].angle_diff_of_closest[y];
+					}
 				}
-				if (max_of_simplex < segmented_triangles_s2[x].angle_diff_of_closest[y]){
-					max_of_simplex = segmented_triangles_s2[x].angle_diff_of_closest[y];
-				}
+				s2_angle_distances.push_back(max_of_simplex);
 			}
-			s2_angle_distances.push_back(max_of_simplex);
+		}
+
+		if (num_simplices_histogram){
+			create_num_simplices_histogram(s1_angle_distances, s2_angle_distances, prefix);
+		}
+
+		if (area_simplices_histogram){
+			create_area_simplices_histogram(segmented_triangles_s1, segmented_triangles_s2, prefix);
+		}
+
+		if (print_area_angle_cutoff >= 0){
+			print_area_simplices_under_cutoff(segmented_triangles_s1, segmented_triangles_s2, print_area_angle_cutoff);
 		}
 		
 		//Returns the max angle
 		return max_angle;
 	}
 
+
+	void surface_angle_distance::print_area_simplices_under_cutoff(std::vector<segmentedTriangle> segmented_triangles_s1, std::vector<segmentedTriangle> segmented_triangles_s2, double cutoff){
+
+		double total_area = 0;
+		double area_below_cutoff = 0;
+
+		for (int n = 0; n < segmented_triangles_s1.size(); n++){
+
+			if (segmented_triangles_s1[n].valid){
+				std::vector<double> vec1;
+				std::vector<double> vec2;
+				std::vector<double> vec3;
+				create_vectors_from_triangle(segmented_triangles_s1[n].boundary_points, vec1, vec2, vec3);
+				total_area += .5 * magnitude_cross_product(vec1, vec2);
+
+				for (int m = 0; m < segmented_triangles_s1[n].simplices.size(); m += 3){
+					if (segmented_triangles_s1[n].angle_diff_of_closest[m/3] <= cutoff){
+						std::vector<double> vec1_seg;
+						std::vector<double> vec2_seg;
+						std::vector<double> vec3_seg;
+
+						std::vector<double> new_triangle;
+						for (int x = 0; x < 3; x++){
+							new_triangle.push_back(segmented_triangles_s1[n].points[3 * segmented_triangles_s1[n].simplices[m + x] + 0]);
+							new_triangle.push_back(segmented_triangles_s1[n].points[3 * segmented_triangles_s1[n].simplices[m + x] + 1]);
+							new_triangle.push_back(segmented_triangles_s1[n].points[3 * segmented_triangles_s1[n].simplices[m + x] + 2]);
+						}
+
+						create_vectors_from_triangle(new_triangle, vec1_seg, vec2_seg, vec3_seg);
+						double increment_area = .5 * magnitude_cross_product(vec1_seg, vec2_seg);
+
+						area_below_cutoff += increment_area;
+					}
+				}
+			}
+		}
+
+		std::cout << area_below_cutoff / total_area << " of the area (" << area_below_cutoff << "/" << total_area << ") is below the cutoff of " << cutoff << ".\n";
+
+
+		total_area = 0;
+		area_below_cutoff = 0;
+
+		for (int n = 0; n < segmented_triangles_s2.size(); n++){
+			if (segmented_triangles_s2[n].valid){
+				std::vector<double> vec1;
+				std::vector<double> vec2;
+				std::vector<double> vec3;
+				create_vectors_from_triangle(segmented_triangles_s2[n].boundary_points, vec1, vec2, vec3);
+				total_area += .5 * magnitude_cross_product(vec1, vec2);
+
+				for (int m = 0; m < segmented_triangles_s2[n].simplices.size(); m+=3){
+					if (segmented_triangles_s2[n].angle_diff_of_closest[m / 3] <= cutoff){
+
+						std::vector<double> vec1_seg;
+						std::vector<double> vec2_seg;
+						std::vector<double> vec3_seg;
+
+						std::vector<double> new_triangle;
+						for (int x = 0; x < 3; x++){
+							new_triangle.push_back(segmented_triangles_s2[n].points[3 * segmented_triangles_s2[n].simplices[m + x] + 0]);
+							new_triangle.push_back(segmented_triangles_s2[n].points[3 * segmented_triangles_s2[n].simplices[m + x] + 1]);
+							new_triangle.push_back(segmented_triangles_s2[n].points[3 * segmented_triangles_s2[n].simplices[m + x] + 2]);
+						}
+
+						create_vectors_from_triangle(new_triangle, vec1_seg, vec2_seg, vec3_seg);
+						double increment_area = .5 * magnitude_cross_product(vec1_seg, vec2_seg);
+
+						area_below_cutoff += increment_area;
+					}
+				}
+			}
+		}
+
+		std::cout << area_below_cutoff / total_area << " of the area (" << area_below_cutoff << "/" << total_area << ") is below the cutoff of " << cutoff << ".\n";
+
+	}
+
+	/*
+	Creates a histogram of the area of simplices in range of angles
+	*/
+	void surface_angle_distance::create_area_simplices_histogram(std::vector<segmentedTriangle> segmented_triangles_s1, std::vector<segmentedTriangle> segmented_triangles_s2, std::string prefix){
+	
+		std::string histo1_name = prefix + "area_simplices_histogram_1.dat";
+		std::ofstream histo1(histo1_name);
+
+		double bins[91];
+
+		for (int n = 0; n < 91; n++){
+			bins[n] = 0;
+		}
+
+		double total_area = 0;
+
+		for (int n = 0; n < segmented_triangles_s1.size(); n++){
+			if (segmented_triangles_s1[n].valid){
+				std::vector<double> vec1;
+				std::vector<double> vec2;
+				std::vector<double> vec3;
+				create_vectors_from_triangle(segmented_triangles_s1[n].boundary_points, vec1, vec2, vec3);
+				total_area += .5 * magnitude_cross_product(vec1, vec2);
+				
+				for (int m = 0; m < segmented_triangles_s1[n].simplices.size(); m+=3){
+
+					int index = (int)floor(segmented_triangles_s1[n].angle_diff_of_closest[m/3]);
+					std::vector<double> vec1_seg;
+					std::vector<double> vec2_seg;
+					std::vector<double> vec3_seg;
+
+					std::vector<double> new_triangle;
+					for (int x = 0; x < 3; x++){
+						new_triangle.push_back(segmented_triangles_s1[n].points[3 * segmented_triangles_s1[n].simplices[m + x] + 0]);
+						new_triangle.push_back(segmented_triangles_s1[n].points[3 * segmented_triangles_s1[n].simplices[m + x] + 1]);
+						new_triangle.push_back(segmented_triangles_s1[n].points[3 * segmented_triangles_s1[n].simplices[m + x] + 2]);
+					}
+
+					create_vectors_from_triangle(new_triangle, vec1_seg, vec2_seg, vec3_seg);
+					double increment_area = .5 * magnitude_cross_product(vec1_seg, vec2_seg);
+
+					bins[index] += increment_area;
+				}
+			}
+		}
+
+		bins[89] += bins[90];
+
+		histo1 << "#Angle\Normalized area of simplices\n";
+		for (int n = 0; n < 90; n++){
+			histo1 << (n + 1) << "\t" << (bins[n] / total_area) << "\n";
+		}
+
+		histo1.close();
+
+
+		std::string histo2_name = prefix + "area_simplices_histogram_2.dat";
+		std::ofstream histo2(histo2_name);
+
+		bins[91];
+
+		for (int n = 0; n < 91; n++){
+			bins[n] = 0;
+		}
+
+		total_area = 0;
+
+		for (int n = 0; n < segmented_triangles_s2.size(); n++){
+			if (segmented_triangles_s2[n].valid){
+				std::vector<double> vec1;
+				std::vector<double> vec2;
+				std::vector<double> vec3;
+				create_vectors_from_triangle(segmented_triangles_s2[n].boundary_points, vec1, vec2, vec3);
+				total_area += .5 * magnitude_cross_product(vec1, vec2);
+
+				for (int m = 0; m < segmented_triangles_s2[n].simplices.size(); m+=3){
+
+					int index = (int)floor(segmented_triangles_s2[n].angle_diff_of_closest[m/3]);
+					std::vector<double> vec1_seg;
+					std::vector<double> vec2_seg;
+					std::vector<double> vec3_seg;
+
+					std::vector<double> new_triangle;
+					for (int x = 0; x < 3; x++){
+						new_triangle.push_back(segmented_triangles_s2[n].points[3 * segmented_triangles_s2[n].simplices[m + x] + 0]);
+						new_triangle.push_back(segmented_triangles_s2[n].points[3 * segmented_triangles_s2[n].simplices[m + x] + 1]);
+						new_triangle.push_back(segmented_triangles_s2[n].points[3 * segmented_triangles_s2[n].simplices[m + x] + 2]);
+					}
+
+					create_vectors_from_triangle(new_triangle, vec1_seg, vec2_seg, vec3_seg);
+					double increment_area = .5 * magnitude_cross_product(vec1_seg, vec2_seg);
+
+					bins[index] += increment_area;
+				}
+			}
+		}
+
+		bins[89] += bins[90];
+		
+		histo2 << "#Angle\Normalized area of simplices\n";
+		for (int n = 0; n < 90; n++){
+			histo2 << (n + 1) << "\t" << (bins[n] / total_area) << "\n";
+		}
+
+		histo2.close();
+	}
+
+	/*
+	Creates a histogram of the number of simplices in ranges of angles
+	*/
+	void surface_angle_distance::create_num_simplices_histogram(std::vector<double> angles1, std::vector<double> angles2, std::string prefix){
+
+		std::string histo1_name = prefix + "num_simplices_histogram_1.dat";
+		std::ofstream histo1(histo1_name);
+
+		int bins[91];
+		for (int n = 0; n < 91; n++){
+			bins[n] = 0;
+		}
+		for (int n = 0; n < angles1.size(); n++){
+			int index = floor(angles1[n]);
+			bins[index]++;
+		}
+		bins[89] += bins[90];
+
+		histo1 << "#Angle\tNumber of simplices\n";
+		for (int n = 0; n < 90; n++){
+			histo1 << (n + 1) << "\t" << bins[n] << "\n";
+		}
+
+		histo1.close();
+
+		std::string histo2_name = prefix + "num_simplices_histogram_2.dat";
+		std::ofstream histo2(histo2_name);
+
+		for (int n = 0; n < 91; n++){
+			bins[n] = 0;
+		}
+
+		for (int n = 0; n < angles2.size(); n++){
+			int index = floor(angles2[n]);
+			bins[index]++;
+		}
+		bins[89] += bins[90];
+
+		histo2 << "#Angle\tNumber of simplices\n";
+		for (int n = 0; n < 90; n++){
+			histo2 << (n + 1) << "\t" << bins[n] << "\n";
+		}
+
+		histo2.close();
+
+	}
+
 	/*
 	Calculates the extended surface to surface information from triangles1 to triangles2
 	*/
-	void surface_angle_distance::surface_to_surface_extended(std::vector<segmentedTriangle> & triangles1, std::vector<segmentedTriangle> triangles2, double epsilon){
+	void surface_angle_distance::surface_to_surface_extended(std::vector<segmentedTriangle> & triangles1, std::vector<segmentedTriangle> triangles2, TriangleCellIntersection * grid, double epsilon, int num_surface){
 		
 		//Loops through all triangles in surface 1
 		for (int x = 0; x < triangles1.size(); x++){
+			//std::cout << x << " " << triangles1.size() << "\n";
 
-			std::cout << x << " / " << triangles1.size() << std::endl;
+			//std::cout << (int)((100.0 * (x) / triangles1.size()) / 10) << " " << (int)((100.0 * (x - 1) / triangles1.size())) << std::endl;
+
+			if (num_surface == 1){
+				if ((int)((100.0 * (x) / triangles1.size()) / 10) >(int)((100.0 * (x - 1) / triangles1.size() / 10))){
+					//std::cout << (int)(100.0 * (x) / triangles1.size() / 10) * 5 << "%" << std::endl;
+				}
+			}
+			else{
+				if ((int)((100.0 * (x) / triangles1.size()) / 10) >(int)((100.0 * (x - 1) / triangles1.size() / 10))){
+					//std::cout << 50 + (int)(100.0 * (x) / triangles1.size() / 10) * 5 << "%" << std::endl;
+				}
+			}
 
 			segmentedTriangle * current_triangle = &triangles1[x];
 
@@ -97,10 +446,10 @@ double surface_angle_distance::surface_angle_distance_extended(std::vector<doubl
 					double nearest_distance = DBL_MAX;
 
 					//Finds the nearest point to the center of the triangle
-					point_to_surface_nearest_point(center_point, triangles2, current_triangle->normal, nearest_distance, temporary_point);
+					point_to_surface_nearest_point(center_point, triangles2, current_triangle->normal, nearest_distance, temporary_point, grid);
 
 					//Computes the minimum angle difference
-					compute_angle_difference(center_point, triangles2, current_triangle->normal, distance, closest, angle_diff, closest_point, temporary_point, epsilon);
+					compute_angle_difference(center_point, triangles2, current_triangle->normal, distance, closest, angle_diff, closest_point, temporary_point, epsilon, grid);
 
 					//Stores information to the current triangle
 					current_triangle->angle_diff_of_closest.push_back(angle_diff);
@@ -117,7 +466,54 @@ double surface_angle_distance::surface_angle_distance_extended(std::vector<doubl
 	/*
 	Computes the minimum angle difference between a point with a predefined normal to another surface within the distance epsilon from another point
 	*/
-	void surface_angle_distance::compute_angle_difference(std::vector<double> point, std::vector<segmentedTriangle> surface, std::vector<double> normal_to_triangle, double & distance, int & minimum_angle_index, double & minimum_angle_diff, std::vector<double> & minimum_angle_point, std::vector<double> point_to_compute_distance_from, double epsilon){
+	void surface_angle_distance::compute_angle_difference(std::vector<double> point, std::vector<segmentedTriangle> surface, std::vector<double> normal_to_triangle, double & distance, int & minimum_angle_index, double & minimum_angle_diff, std::vector<double> & minimum_angle_point, std::vector<double> point_to_compute_distance_from, double epsilon, TriangleCellIntersection * grid){
+
+		//Simplices to check
+		std::vector<int> simplices_to_check;
+		int current_shell = 0;
+
+		//Make a vector of all simplices possibly in the epsilon range
+		while (epsilon >= grid->get_width()*(current_shell - 1)){
+			std::vector<int> temp_vector;
+			grid->find_simplices_in_shell_distance_from_cube(point_to_compute_distance_from, current_shell, temp_vector);
+			
+			for (int n = 0; n < temp_vector.size(); n++){
+				if (std::find(simplices_to_check.begin(), simplices_to_check.end(), temp_vector[n]) == simplices_to_check.end()){
+					simplices_to_check.push_back(temp_vector[n]);
+				}
+			}
+			current_shell++;
+		}
+
+		//Loop through all simplices that could possibly meet the epsilon distance
+		for (int n = 0; n < simplices_to_check.size(); n++){
+		
+			segmentedTriangle current_triangle = surface[simplices_to_check[n]];
+
+			//If the surface is valid continue
+			if (current_triangle.valid){
+				double distance_from_point = 0;
+				std::vector<double> temp_vector;
+
+				//Computes the distance from a point to the triangle
+				point_to_triangle(point_to_compute_distance_from, current_triangle, distance_from_point, temp_vector);
+
+				//If the distance is less than the specified epsilon, continue
+				if (distance_from_point < epsilon){
+					//Calculates the angle between the normal and the normal of the current triangle
+					double currentAngle = angle_of_vectors(normal_to_triangle, current_triangle.normal);
+					//If the current angle is less than the minimum, update the new information
+					if (currentAngle < minimum_angle_diff){
+						minimum_angle_diff = currentAngle;
+						minimum_angle_index = simplices_to_check[n];
+						point_to_triangle(point, current_triangle, distance, minimum_angle_point);
+					}
+				}
+			}
+		}
+
+		/* Old code
+
 
 		//Loops through all of the triangles that make up a surface
 		for (int x = 0; x < surface.size(); x++){
@@ -143,13 +539,55 @@ double surface_angle_distance::surface_angle_distance_extended(std::vector<doubl
 				}
 			}
 		}
+		*/
 	}
 
 	/*
 	Computes information for point to surface
 	*/
-	void surface_angle_distance::point_to_surface_nearest_point(std::vector<double> point, std::vector<segmentedTriangle> surface, std::vector<double> normal_to_triangle, double & distance, std::vector<double> & closest_point){
+	void surface_angle_distance::point_to_surface_nearest_point(std::vector<double> point, std::vector<segmentedTriangle> surface, std::vector<double> normal_to_triangle, double & distance, std::vector<double> & closest_point, TriangleCellIntersection * grid){
 	
+		distance = DBL_MAX;
+		int current_shell = 0;
+		std::vector<int> checked;
+
+		//Loop until it is not possible to find a smaller distance
+		while (distance >= grid->get_width() * (current_shell - 1)){
+			std::vector<int> simplices_in_shell;
+			//Find simplices in current shell
+
+			grid->find_simplices_in_shell_distance_from_cube(point, current_shell, simplices_in_shell);
+
+			//Compute distance of simplices in shell
+			for (int n = 0; n < simplices_in_shell.size(); n++){
+				if (std::find(checked.begin(), checked.end(), simplices_in_shell[n]) == checked.end()){
+					segmentedTriangle current_triangle = surface[simplices_in_shell[n]];
+					if (current_triangle.valid){
+
+						double temp_distance = 0;
+						std::vector<double> temp_vector;
+
+						//Calculate the distance from the point to the trianlge
+						point_to_triangle(point, current_triangle, temp_distance, temp_vector);
+
+						//If the current distance is less than the current minimum, update the information
+						if (temp_distance < distance){
+							distance = temp_distance;
+							closest_point.clear();
+							for (int x = 0; x < 3; x++){
+								closest_point.push_back(temp_vector[x]);
+							}
+						}
+					}
+					checked.push_back(simplices_in_shell[n]);
+				}
+			}
+			//std::cout << current_shell << " " << distance << std::endl;
+			current_shell++;
+		}
+
+		/* Old code
+
 		distance = DBL_MAX;
 
 		//Loops through the triangles that make up the surface
@@ -174,6 +612,7 @@ double surface_angle_distance::surface_angle_distance_extended(std::vector<doubl
 				}
 			}
 		}
+		*/
 	}
 
 	void surface_angle_distance::point_to_triangle(std::vector<double> point, segmentedTriangle triangle, double & distance, std::vector<double> & closest_point){
@@ -707,12 +1146,15 @@ double surface_angle_distance::surface_angle_distance_extended(std::vector<doubl
 		std::vector<double> p2(triangle.begin() + 3, triangle.begin() + 6);
 		std::vector<double> p3(triangle.begin() + 6, triangle.begin() + 9);
 
-		//Sum of distance between points
-		edge_length += point_to_point_distance(p1, p2);
-		edge_length += point_to_point_distance(p1, p3);
-		edge_length += point_to_point_distance(p2, p3);
+		double max_length = fmax(point_to_point_distance(p1, p2), point_to_point_distance(p1, p3));
+		max_length = fmax(max_length, point_to_point_distance(p2, p3));
 
-		return edge_length;
+		//Sum of distance between points
+		//edge_length += point_to_point_distance(p1, p2);
+		//edge_length += point_to_point_distance(p1, p3);
+		//edge_length += point_to_point_distance(p2, p3);
+
+		return max_length;
 	}
 
 	void surface_angle_distance::create_vectors_from_triangle(std::vector<double> triangle, std::vector<double> & vec1, std::vector<double> & vec2, std::vector<double> & vec3){
@@ -832,6 +1274,21 @@ double surface_angle_distance::surface_angle_distance_extended(std::vector<doubl
 
 		//Returning success
 		return true;
+	}
+
+	/*
+	Find the cross product
+	*/
+	double surface_angle_distance::magnitude_cross_product(std::vector<double> a, std::vector<double> b){
+
+		//Solving cross product
+		double term1 = a[1] * b[2] - a[2] * b[1];
+		double term2 = -(a[0] * b[2] - a[2] * b[0]);
+		double term3 = a[0] * b[1] - a[1] * b[0];
+
+		double magnitude = sqrt(term1*term1 + term2*term2 + term3*term3);
+
+		return magnitude;
 	}
 
 	/*
