@@ -20,7 +20,7 @@ public:
 	segmentedTriangle(){
 	
 	}
-	segmentedTriangle::segmentedTriangle(int size);
+	segmentedTriangle(int size);
 
 	std::vector<double> points;
 	std::vector<int> simplices;

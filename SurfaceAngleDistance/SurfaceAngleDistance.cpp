@@ -23,12 +23,11 @@
 #ifdef _WIN32
 #include <time.h>
 #include <windows.h>
-#endif
 
-#ifdef __unix
+#else
 #include <time.h>
 #include <sys/time.h>
-
+#include <stdint.h>
 uint64_t getTimeMs(void)
 {
 	struct timeval tv;
@@ -56,7 +55,7 @@ double surface_angle_distance::surface_angle_distance_extended(const std::vector
 
 		#ifdef _WIN32
 			long start = GetTickCount();
-		#elif __unix
+		#else
 			uint64_t start = getTimeMs();
 		#endif
 
@@ -67,7 +66,7 @@ double surface_angle_distance::surface_angle_distance_extended(const std::vector
 		
 		#ifdef _WIN32
 			long segment_start = GetTickCount();
-		#elif __unix
+		#else
 			uint64_t segment_start = getTimeMs();
 		#endif
 
@@ -77,7 +76,7 @@ double surface_angle_distance::surface_angle_distance_extended(const std::vector
 		#ifdef _WIN32
 			long segment_triangles_time = GetTickCount() - segment_start;
 			segment_start = GetTickCount();
-		#elif __unix
+		#else
 			uint64_t segment_triangles_time = getTimeMs() - segment_start;
 			segment_start = getTimeMs();
 		#endif
@@ -171,8 +170,8 @@ double surface_angle_distance::surface_angle_distance_extended(const std::vector
 		#ifdef _WIN32
 				long cell_intersection_time = GetTickCount() - segment_start;
 				segment_start = GetTickCount();
-		#elif __unix
-				uint64_t cell_intersection_time = getTimeMs() - segment_start
+		#else
+				uint64_t cell_intersection_time = getTimeMs() - segment_start;
 				segment_start = getTimeMs();
 		#endif
 
@@ -258,7 +257,7 @@ double surface_angle_distance::surface_angle_distance_extended(const std::vector
 			cout << "Cell intersection time: " << cell_intersection_time << endl;
 			cout << "Angle comp time: " << (GetTickCount() - segment_start) << endl;
 			cout << "Total time: " << (GetTickCount() - start) << endl;
-#elif __unix
+#else
 			cout << "Triangle segment time: " << segment_triangles_time << endl;
 			cout << "Cell intersection time: " << cell_intersection_time << endl;
 			cout << "Angle comp time: " << (getTimeMs() - segment_start) << endl;

@@ -53,7 +53,7 @@ bool adjust_coloring_range = false;
 bool percent_done = false;
 bool binary_coloring = false;
 bool out_param = false;
-bool time = false;
+bool show_time = false;
 bool info = false;
 
 
@@ -215,7 +215,7 @@ void parse_command_line(int argc, char * argv[]){
 			}
 			//Setting variable for param output
 			else if (!strcmp(argv[x], "-time")){
-				time = true;
+				show_time = true;
 			}
 			//Setting variable for param output
 			else if (!strcmp(argv[x], "-info")){
@@ -350,7 +350,7 @@ int main(int argc, char** argv)
 	vector<double> s1_angle_distances(s1_simplices.size() / 3);
 	vector<double> s2_angle_distances(s2_simplices.size() / 3);
 
-	double max_of_min_angles = surface_angle_distance::surface_angle_distance_extended(s1_points, s1_simplices, s2_points, s2_simplices, epsilon, deltaLength, edge_width, s1_angle_distances, s2_angle_distances, numSimplicesHistogram, areaSimplicesHistogram, areaBelowCutoff, prefix, ignore_surface_orientation, testing_script_mode, percent_done, time, info);
+	double max_of_min_angles = surface_angle_distance::surface_angle_distance_extended(s1_points, s1_simplices, s2_points, s2_simplices, epsilon, deltaLength, edge_width, s1_angle_distances, s2_angle_distances, numSimplicesHistogram, areaSimplicesHistogram, areaBelowCutoff, prefix, ignore_surface_orientation, testing_script_mode, percent_done, show_time, info);
 	if (!testing_script_mode){
 		//cout << "Maximum of minimum angles: " << max_of_min_angles << endl;
 	}
