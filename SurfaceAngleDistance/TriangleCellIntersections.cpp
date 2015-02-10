@@ -1,11 +1,25 @@
-#include "stdafx.h"
 #include "TriangleCellIntersections.h"
 #include <math.h>
 #include <iostream>
 
+/////////////Linux includes
+#include <algorithm>
+#include <vector>
+#include <iostream>
+#include <fstream>
+#include <cmath> 
+#include <string.h>
+#include <stdio.h>
+#include <stdio.h>
+#include <float.h>
+#include <stdlib.h>   
+////////////////////////////
+
 using namespace std;
 
-TriangleCellIntersection::TriangleCellIntersection(std::vector<double> points, std::vector<int> simplices, double box_width, double & average_boxes){
+const int DIM3 = 3;
+
+TriangleCellIntersection::TriangleCellIntersection(const std::vector<double> & points, const std::vector<int> & simplices, double box_width, double & average_boxes){
 
 	average_boxes = 0;
 
@@ -21,21 +35,18 @@ TriangleCellIntersection::TriangleCellIntersection(std::vector<double> points, s
 
 	//Preparing triangle intersection vector
 	int num_boxes = lengths[0] * lengths[1] * lengths[2];
-	for (int n = 0; n < num_boxes; n++){
-		std::vector<int> temp_vector;
-		list_of_intersecting_simplices.push_back(temp_vector);
-	}
+	list_of_intersecting_simplices.resize(num_boxes);
 
 	//Find the boxes the simplices intersect
 	for (int n = 0; n < simplices.size(); n += 3){
 		//Storing the points of a triangle
-		std::vector<double> triangle_points;
+		std::vector<double> triangle_points(DIM3 * 3);
 
 		//Looping through the three simplices
 		for (int m = 0; m < 3; m++){
 			//Looping throught the three points of each simplice
 			for (int p = 0; p < 3; p++){
-				triangle_points.push_back(points[3 * simplices[n + m] + p]);
+				triangle_points[3 * m + p] = (points[3 * simplices[n + m] + p]);
 			}
 		}
 		//Find the boxes the triangles intersects
@@ -53,13 +64,13 @@ TriangleCellIntersection::TriangleCellIntersection(std::vector<double> points, s
 	average_boxes /= (simplices.size() / 3);
 }
 
-void TriangleCellIntersection::find_boxes_triangle_intersects(std::vector<double> triangle_points, std::vector<int> & boxes_intersected){
+void TriangleCellIntersection::find_boxes_triangle_intersects(const std::vector<double> & triangle_points, std::vector<int> & boxes_intersected){
 
 	boxes_intersected.clear();
 
 	double triangle_mins[3];
 	double triangle_maxes[3];
-	std::vector<double> normal_vector;
+	std::vector<double> normal_vector(DIM3);
 	
 	if (vector_normal_to_triangle(triangle_points, normal_vector)){
 
@@ -109,7 +120,11 @@ void TriangleCellIntersection::find_boxes_triangle_intersects(std::vector<double
 			upper[n] = (int)(triangle_maxes[n] / width);
 		}
 
+		std::vector<double> adjusted_triangle_points(triangle_points.size());
 
+		for (int n = 0; n < triangle_points.size(); n++){
+			adjusted_triangle_points[n] = ((triangle_points[n] - mins[n % 3]) / width);
+		}
 		
 		//Recording intersected boxes
 		for (int a = lower[0]; a <= upper[0] && a < lengths[0]; a++){
@@ -117,7 +132,7 @@ void TriangleCellIntersection::find_boxes_triangle_intersects(std::vector<double
 				for (int c = lower[2]; c <= upper[2] && c < lengths[2]; c++){
 
 					//Records the value of the dot product of the vector normal to the plane and the vector between cube vertices and a triangle point
-					std::vector<double> plane_values_vertices;
+					std::vector<double> plane_values_vertices(8);
 					for (int x = 0; x <= 1; x++){
 						for (int y = 0; y <= 1; y++){
 							for (int z = 0; z <= 1; z++){
@@ -125,7 +140,7 @@ void TriangleCellIntersection::find_boxes_triangle_intersects(std::vector<double
 								value += (normal_vector[0] * ((a + x) * width + mins[0]));
 								value += (normal_vector[1] * ((b + y) * width + mins[1]));
 								value += (normal_vector[2] * ((c + z) * width + mins[2]));
-								plane_values_vertices.push_back(value);
+								plane_values_vertices[4 * x + 2 * y + z] = (value);
 							}
 						}
 					}
@@ -138,15 +153,103 @@ void TriangleCellIntersection::find_boxes_triangle_intersects(std::vector<double
 
 					//Record intersected boxes
 					if (add_box){
-						boxes_intersected.push_back(find_box_index(a, b, c));
+						if (region_test(adjusted_triangle_points, a, b, c)){
+							boxes_intersected.push_back(find_box_index(a, b, c));
+						}
 					}
 				}
 			}
 		}
+
+
 	}
 }
 
-void TriangleCellIntersection::find_simplices_in_shell_distance_from_cube(std::vector<double> point, int shell_level, std::vector<int> & simplices){
+bool TriangleCellIntersection::region_test(const std::vector<double> triangle, int a, int b, int c){
+	
+	std::vector<double> xyTriangle(6);
+	int index = 0;
+	for (int n = 0; n < triangle.size() - 1; n++){
+		if (n % 3 == 2){
+			n++;
+		}
+		xyTriangle[index++] = (triangle[n]);
+	}
+
+	std::vector<double> xzTriangle(6);
+	index = 0;
+	for (int n = 0; n < triangle.size(); n++){
+		if (n % 3 == 1){
+			n++;
+		}
+		xzTriangle[index++] = (triangle[n]);
+	}
+
+	std::vector<double> yzTriangle(6);
+	index = 0;
+	for (int n = 0; n < triangle.size(); n++){
+		if (n % 3 == 0){
+			n++;
+		}
+		yzTriangle[index++] = (triangle[n]);
+	}
+
+	return (triangle_square_intersection(xyTriangle, a, b) && triangle_square_intersection(xzTriangle, a, c) && triangle_square_intersection(yzTriangle, b, c));
+}
+
+bool TriangleCellIntersection::triangle_square_intersection(const std::vector<double> & triangle2D, int a, int b){
+
+	std::vector<double> line3(3);
+	line3[0] = (triangle2D[3] - triangle2D[1]);
+	line3[1] = (triangle2D[0] - triangle2D[2]);
+	line3[2] = (triangle2D[1] * triangle2D[2] - triangle2D[0] * triangle2D[3]);
+	std::vector<double> point3(2);
+	point3[0] = (triangle2D[4]);
+	point3[1] = (triangle2D[5]);
+
+	std::vector<double> line2(3);
+	line2[0] = (triangle2D[1] - triangle2D[5]);
+	line2[1] = (triangle2D[4] - triangle2D[0]);
+	line2[2] = (triangle2D[5] * triangle2D[0] - triangle2D[4] * triangle2D[1]);
+	std::vector<double> point2(2);
+	point2[0] = (triangle2D[2]);
+	point2[1] = (triangle2D[3]);
+
+	std::vector<double> line1(3);
+	line1[0] = (triangle2D[5] - triangle2D[3]);
+	line1[1] = (triangle2D[2] - triangle2D[4]);
+	line1[2] = (triangle2D[3] * triangle2D[4] - triangle2D[2] * triangle2D[5]);
+	std::vector<double> point1(2);
+	point1[0] = (triangle2D[0]);
+	point1[1] = (triangle2D[1]);
+
+
+	return line_square_intersection(line1, point1, a, b) && line_square_intersection(line2, point2, a, b) && line_square_intersection(line3, point3, a, b);
+}
+
+bool TriangleCellIntersection::line_square_intersection(const std::vector<double> & line, const std::vector<double> & point, int a, int b){
+
+	double epsilon_value = .001;
+
+	double point_value = line[0] * point[0] + line[1] * point[1] + line[2];
+
+	bool return_value = false;
+
+	for (int x = 0; x <= 1 && !return_value; x++){
+		for (int y = 0; y <= 1 && !return_value; y++){
+			double current_value = line[0] * (a + x) + line[1] * (b + y) + line[2];
+			if (point_value > 0){
+				return_value = current_value >= -epsilon_value;
+			}else{
+				return_value = current_value <= epsilon_value;
+			}
+		}
+	}
+
+	return return_value;
+}
+
+void TriangleCellIntersection::find_simplices_in_shell_distance_from_cube(const std::vector<double> & point, int shell_level, std::vector<int> & simplices){
 
 	simplices.clear();
 
@@ -200,7 +303,7 @@ double TriangleCellIntersection::get_width(){
 	return width;
 }
 
-void TriangleCellIntersection::find_mins_and_maxes(std::vector<double> points){
+void TriangleCellIntersection::find_mins_and_maxes(const std::vector<double> & points){
 	
 	if (points.size() >= 3){
 		//Initializing
@@ -230,17 +333,17 @@ void TriangleCellIntersection::find_mins_and_maxes(std::vector<double> points){
 /*
 Find the normal cross product
 */
-bool TriangleCellIntersection::vector_normal_to_triangle(std::vector<double> triangle, std::vector<double> & normal_vector){
+bool TriangleCellIntersection::vector_normal_to_triangle(const std::vector<double> & triangle, std::vector<double> & normal_vector){
 
-	std::vector<double> a;
-	std::vector<double> b;
+	std::vector<double> a(DIM3);
+	std::vector<double> b(DIM3);
 
 	//Finding vectors of edges of triangles
 	for (int n = 0; n < 3; n++){
-		a.push_back(triangle[n + 3] - triangle[n + 0]);
+		a[n] = (triangle[n + 3] - triangle[n + 0]);
 	}
 	for (int n = 0; n < 3; n++){
-		b.push_back(triangle[n + 6] - triangle[n + 0]);
+		b[n] = (triangle[n + 6] - triangle[n + 0]);
 	}
 
 	//Solving cross product
@@ -256,10 +359,9 @@ bool TriangleCellIntersection::vector_normal_to_triangle(std::vector<double> tri
 	}
 	else{
 		//Adding to vector
-		normal_vector.clear();
-		normal_vector.push_back(term1);
-		normal_vector.push_back(term2);
-		normal_vector.push_back(term3);
+		normal_vector[0] = (term1);
+		normal_vector[1] = (term2);
+		normal_vector[2] = (term3);
 	}
 
 	//Returning success

@@ -27,6 +27,9 @@
     <ClInclude Include="SurfaceAngleDistance.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="TriangleCellIntersections.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -36,6 +39,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="SurfaceAngleDistance.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TriangleCellIntersections.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
