@@ -6,6 +6,7 @@
 #include "ijk.txx"
 #include "ijkIO.txx"
 #include "SurfaceAngleDistance.h"
+#include "ANGLE_DIST_PARAM.h"
 
 /////////////Linux includes
 #include <algorithm>
@@ -48,6 +49,7 @@ double deltaLength = 0;
 bool ignore_surface_orientation = true;
 bool out_tri = false;
 bool testing_script_mode = false;
+bool testing_script_mode_nums = false;
 bool back_coloring = false;
 bool adjust_coloring_range = false;
 bool percent_done = false;
@@ -76,7 +78,7 @@ void usage_error(){
 	cout << "\t-back_color Outputs back color to off file" << endl;
 	cout << "\t-adjust_coloring_range Outputs color in a 0-1 range" << endl;
 	cout << "\t-percent_done Outputs percent done" << endl;
-	cout << "\t-binary_color <x> changes coloring to be two colors with cutoff of x" << endl;
+	cout << "\t-binary_coloring <x> changes coloring to be two colors with cutoff of x" << endl;
 	cout << "\t-out_param outputs the set parameters" << endl;
 	cout << "\t-time outputs timing of the program" << endl;
 	cout << "\t-info outputs additional info" << endl;
@@ -221,6 +223,10 @@ void parse_command_line(int argc, char * argv[]){
 			else if (!strcmp(argv[x], "-info")){
 				info = true;
 			}
+			//Setting variable for testing script
+			else if (!strcmp(argv[x], "-tsm_nums")){
+				testing_script_mode_nums = true;
+			}
 			//An unknown argument was sent
 			else{
 				cout << "'" << argv[x] << "' is not a recognized argument." << endl;
@@ -258,8 +264,15 @@ void parse_command_line(int argc, char * argv[]){
 
 }
 
+void memory_exhaustion()
+{
+	cerr << "Error: Out of memory.  Terminating program." << endl;
+	exit(10);
+}
+
 int main(int argc, char** argv)
 {
+	std::set_new_handler(memory_exhaustion);
 
 	//Parsing command line
 	parse_command_line(argc, argv);
@@ -318,7 +331,7 @@ int main(int argc, char** argv)
 		exit(50);
 	}
 
-	if (!testing_script_mode){
+	if (!testing_script_mode && !testing_script_mode_nums){
 		cout << "Size of simplices 1: " << s1_simplices.size() / 3 << endl;
 	}
 	try{
@@ -340,7 +353,7 @@ int main(int argc, char** argv)
 		exit(50);
 	}
 
-	if (!testing_script_mode){
+	if (!testing_script_mode && !testing_script_mode_nums){
 		cout << "Size of simplices 2: " << s2_simplices.size() / 3 << endl;
 	}
 
@@ -350,7 +363,25 @@ int main(int argc, char** argv)
 	vector<double> s1_angle_distances(s1_simplices.size() / 3);
 	vector<double> s2_angle_distances(s2_simplices.size() / 3);
 
-	double max_of_min_angles = surface_angle_distance::surface_angle_distance_extended(s1_points, s1_simplices, s2_points, s2_simplices, epsilon, deltaLength, edge_width, s1_angle_distances, s2_angle_distances, numSimplicesHistogram, areaSimplicesHistogram, areaBelowCutoff, prefix, ignore_surface_orientation, testing_script_mode, percent_done, show_time, info);
+
+	ANGLE_DIST_PARAM params;
+	params.epsilon = epsilon;
+	params.delta = deltaLength;
+	params.width = edge_width;
+	params.s1_angle_distances = &s1_angle_distances;
+	params.s2_angle_distances = &s2_angle_distances;
+	params.num_simplices_histogram = numSimplicesHistogram;
+	params.area_simplices_histogram = areaSimplicesHistogram;
+	params.print_area_angle_cutoff = areaBelowCutoff;
+	params.prefix = prefix;
+	params.orient = ignore_surface_orientation;
+	params.testing_script_mode = testing_script_mode;
+	params.testing_script_mode_nums = testing_script_mode_nums;
+	params.percent_done = percent_done;
+	params.time = show_time;
+	params.info = info;
+
+	double max_of_min_angles = surface_angle_distance::surface_angle_distance_extended(s1_points, s1_simplices, s2_points, s2_simplices, params);
 	if (!testing_script_mode){
 		//cout << "Maximum of minimum angles: " << max_of_min_angles << endl;
 	}

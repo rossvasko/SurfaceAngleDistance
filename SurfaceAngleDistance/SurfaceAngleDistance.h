@@ -1,4 +1,5 @@
 #include "TriangleCellIntersections.h"
+#include "ANGLE_DIST_PARAM.h"
 #include <vector>
 
 /////////////Linux includes
@@ -20,7 +21,8 @@ public:
 	segmentedTriangle(){
 	
 	}
-	segmentedTriangle(int size);
+	
+	void set_size(int size);
 
 	std::vector<double> points;
 	std::vector<int> simplices;
@@ -46,7 +48,7 @@ public:
 
 namespace surface_angle_distance
 {
-	double surface_angle_distance_extended(const std::vector<double> & s1_points, const std::vector<int> & s1_simplices, const std::vector<double> & s2_points, const std::vector<int> & s2_simplices, double epsilon, double delta, double width, std::vector<double> & s1_angle_distances, std::vector<double> & s2_angle_distances, bool num_simplices_histogram, bool area_simplices_histogram, double print_area_angle_cutoff, std::string prefix, bool orient, bool testing_script_mode, bool percent_done, bool time, bool info);
+	double surface_angle_distance_extended(const std::vector<double> & s1_points, const std::vector<int> & s1_simplices, const std::vector<double> & s2_points, const std::vector<int> & s2_simplices, ANGLE_DIST_PARAM & params);
 	void segment_triangle(std::vector<double> & triangle, double delta);
 	double point_to_point_distance(const std::vector<double> & p1, const std::vector<double> & p2);
 	double edge_length(const std::vector<double> & triangle);

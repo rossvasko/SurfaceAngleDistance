@@ -30,6 +30,9 @@
     <ClInclude Include="TriangleCellIntersections.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="ANGLE_DIST_PARAM.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

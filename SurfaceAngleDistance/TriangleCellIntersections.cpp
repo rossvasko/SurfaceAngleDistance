@@ -19,7 +19,7 @@ using namespace std;
 
 const int DIM3 = 3;
 
-TriangleCellIntersection::TriangleCellIntersection(const std::vector<double> & points, const std::vector<int> & simplices, double box_width, double & average_boxes){
+TriangleCellIntersection::TriangleCellIntersection(const std::vector<double> & points, const std::vector<int> & simplices, double box_width, double & average_boxes, double & intersection_per_box){
 
 	average_boxes = 0;
 
@@ -35,7 +35,11 @@ TriangleCellIntersection::TriangleCellIntersection(const std::vector<double> & p
 
 	//Preparing triangle intersection vector
 	int num_boxes = lengths[0] * lengths[1] * lengths[2];
-	list_of_intersecting_simplices.resize(num_boxes);
+	
+
+	try
+	{
+		list_of_intersecting_simplices.resize(num_boxes);
 
 	//Find the boxes the simplices intersect
 	for (int n = 0; n < simplices.size(); n += 3){
@@ -61,7 +65,18 @@ TriangleCellIntersection::TriangleCellIntersection(const std::vector<double> & p
 		}
 	}
 
+	intersection_per_box = average_boxes;
+	intersection_per_box /= num_boxes;
 	average_boxes /= (simplices.size() / 3);
+
+	}
+	catch (...)
+	{
+		std::cerr << "Errors creating intersection grid." << endl;
+		std::cerr << "Use a larger -w parameter" << endl;
+		std::cerr << "Exiting" << endl;
+		exit(10);
+	}
 }
 
 void TriangleCellIntersection::find_boxes_triangle_intersects(const std::vector<double> & triangle_points, std::vector<int> & boxes_intersected){
@@ -274,9 +289,9 @@ void TriangleCellIntersection::find_simplices_in_shell_distance_from_cube(const 
 
 				for (int n = 0; n < list_of_intersecting_simplices[current_box_index].size(); n++){
 					int current_simplex = list_of_intersecting_simplices[current_box_index][n];
-					if (std::find(simplices.begin(), simplices.end(), current_simplex) == simplices.end()){
+					//if (std::find(simplices.begin(), simplices.end(), current_simplex) == simplices.end()){
 						simplices.push_back(current_simplex);
-					}
+					//}
 				}
 				//If at starting or ending face of cube, increment z normally
 				if (a == box_coords[0] - shell_level || a == box_coords[0] + shell_level){

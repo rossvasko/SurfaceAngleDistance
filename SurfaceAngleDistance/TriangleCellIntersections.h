@@ -19,7 +19,7 @@
 class TriangleCellIntersection{
 
 public:
-	TriangleCellIntersection(const std::vector<double> & points, const std::vector<int> & simplices, double width, double & average_boxes);
+	TriangleCellIntersection(const std::vector<double> & points, const std::vector<int> & simplices, double width, double & average_boxes, double & intersection_per_box);
 	double get_width();
 	void find_simplices_in_shell_distance_from_cube(const std::vector<double> & point, int shell_level, std::vector<int> & simplices);
 
