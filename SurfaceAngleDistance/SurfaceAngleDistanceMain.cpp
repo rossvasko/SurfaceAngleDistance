@@ -46,6 +46,8 @@ double edge_width = -1;
 double epsilon = 0;
 double deltaLength = 0;
 
+int sub_resolution = 1;
+
 bool ignore_surface_orientation = true;
 bool out_tri = false;
 bool testing_script_mode = false;
@@ -87,7 +89,7 @@ void usage_error(){
 }
 
 void compute_color(double * colors, int angle, double custom_color){
-	
+
 	double max_angle = 90;
 	if (!ignore_surface_orientation){
 		max_angle = 180;
@@ -116,7 +118,7 @@ void compute_color(double * colors, int angle, double custom_color){
 }
 
 void parse_command_line(int argc, char * argv[]){
-	
+
 	if (argc >= 7){
 		//Reads in two surface files
 		file1 = argv[argc - 2];
@@ -145,7 +147,7 @@ void parse_command_line(int argc, char * argv[]){
 				deltaLengthSet = true;
 			}
 			//Setting number of simplices histogram to true
-			else if(!strcmp(argv[x], "-nh")){
+			else if (!strcmp(argv[x], "-nh")){
 				numSimplicesHistogram = true;
 			}
 			//Setting area of simplices histogram to true
@@ -227,6 +229,13 @@ void parse_command_line(int argc, char * argv[]){
 			else if (!strcmp(argv[x], "-tsm_nums")){
 				testing_script_mode_nums = true;
 			}
+			//Setting variable for testing script
+			else if (!strcmp(argv[x], "-sr")){
+				istringstream s;
+				s.str(argv[x + 1]);
+				s >> sub_resolution;
+				x++;
+			}
 			//An unknown argument was sent
 			else{
 				cout << "'" << argv[x] << "' is not a recognized argument." << endl;
@@ -253,6 +262,7 @@ void parse_command_line(int argc, char * argv[]){
 		//cout << "Extended neighborhood: " << extNeighborhood << endl;
 		cout << "Epsilon neighborhood: " << epsilon << endl;
 		cout << "Delta edge length: " << deltaLength << endl;
+		cout << "Sub-resolution length: " << sub_resolution << endl;
 		cout << "Creating histogram of number of simplices: " << numSimplicesHistogram << endl;
 		cout << "Creating histogram of area of simplices: " << areaSimplicesHistogram << endl;
 		cout << "Printing area of simplices under cutoff: " << areaBelowCutoff << endl;
@@ -320,8 +330,9 @@ int main(int argc, char** argv)
 		cerr << "Error while reading surface of " << file1 << endl;
 		if (error.NumMessages() == 0) {
 			cerr << "Unknown error." << endl;
-		}else { 
-			error.Print(cerr); 
+		}
+		else {
+			error.Print(cerr);
 		}
 		cerr << "Exiting." << endl;
 		exit(30);
@@ -335,10 +346,10 @@ int main(int argc, char** argv)
 		cout << "Size of simplices 1: " << s1_simplices.size() / 3 << endl;
 	}
 	try{
-		IJK::ijkinOFF(surface_file2, dim, dim_surface, s2_points, s2_simplices);	
+		IJK::ijkinOFF(surface_file2, dim, dim_surface, s2_points, s2_simplices);
 	}
 	catch (IJK::PROCEDURE_ERROR error){
-		cerr << "Error while reading surface of " << file2 << endl; 
+		cerr << "Error while reading surface of " << file2 << endl;
 		if (error.NumMessages() == 0) {
 			cerr << "Unknown error." << endl;
 		}
@@ -380,6 +391,7 @@ int main(int argc, char** argv)
 	params.percent_done = percent_done;
 	params.time = show_time;
 	params.info = info;
+	params.sub_resolution = sub_resolution;
 
 	double max_of_min_angles = surface_angle_distance::surface_angle_distance_extended(s1_points, s1_simplices, s2_points, s2_simplices, params);
 	if (!testing_script_mode){
@@ -405,7 +417,7 @@ int main(int argc, char** argv)
 					}
 				}
 				cout << "Angle: " << s1_angle_distances[n];
-				cout << " Vertex coords: " ;
+				cout << " Vertex coords: ";
 				for (int m = 0; m < 3; m++){
 					cout << "(";
 					for (int p = 0; p < 3; p++){
@@ -466,7 +478,7 @@ int main(int argc, char** argv)
 
 	std::vector<double> front_color;
 	std::vector<double> back_color;
-	
+
 
 	double max_angle_calcs = 90;
 

@@ -22,6 +22,7 @@ public:
 	bool percent_done;
 	bool time;
 	bool info;
+	int sub_resolution;
 
 };
 
