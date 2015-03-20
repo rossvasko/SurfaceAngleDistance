@@ -74,6 +74,7 @@ void usage_error(){
 	cout << "\t-ah Generates histogram of normalized area" << endl;
 	cout << "\t-ca <x> Prints proportion of area under the angle difference x" << endl;
 	cout << "\t-w <x> Sets the box width of the box width intersection to x" << endl;
+	cout << "\t-sr <x> Sets the dimensions of the sub-regions of the grid to x" << endl;
 	cout << "\t-prefix <x> Sets prefix of file output to x" << endl;
 	cout << "\t-out_tri <x> Outputs triangles above angle cutoff x" << endl;
 	cout << "\t-orient Calculates angle differences and accounts for orientation" << endl;
