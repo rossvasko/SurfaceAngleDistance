@@ -714,17 +714,20 @@ void surface_angle_distance::point_to_surface_nearest_point(const double point[]
 	while (distance > grid->get_width() * (current_shell - 1)){
 		std::vector<int> simplices_in_shell;
 
+
 		//Find simplices in current shell
 		grid->find_simplices_in_shell_distance_from_cube(point, current_shell, simplices_in_shell);
-
+		
 		//Compute distance of simplices in shell
 		for (int n = 0; n < simplices_in_shell.size(); n++){
 
 			if (!surface[simplices_in_shell[n]].checked){
 				segmentedTriangle current_triangle = surface[simplices_in_shell[n]];
+
 				if (current_triangle.valid){
 
 					double dist_min = point_to_point_distance(point, current_triangle.sphere_center) - current_triangle.sphere_radius;
+
 
 					if (dist_min <= 0 || dist_min < distance + epsilon){
 
@@ -761,13 +764,11 @@ void surface_angle_distance::point_to_surface_nearest_point(const double point[]
 				checked.push_back(simplices_in_shell[n]);
 			}
 		}
-		//std::cout << current_shell << " " << distance << std::endl;
+
 		current_shell++;
 	}
 
 	smallest_distance = distance;
-
-
 
 	for (int n = 0; n < distances.size(); n++){
 		if (distances[n] <= smallest_distance + epsilon){
@@ -1230,7 +1231,7 @@ void surface_angle_distance::create_segmented_triangles(const std::vector<double
 							segmented_triangles[n / 3].ac_mag = vector_magnitude(segmented_triangles[n / 3].a_to_c);
 							segmented_triangles[n / 3].bc_mag = vector_magnitude(segmented_triangles[n / 3].b_to_c);
 
-							if (dot_product(vec2, vec3) > 0){
+							if (dot_product(vec2, vec3) >= 0){
 								segmented_triangles[n / 3].triangle_case = 2;
 								for (int x = 0; x < 3; x++){
 									double center_coor = (segmented_triangles[n / 3].boundary_points[x] + segmented_triangles[n / 3].boundary_points[3 + x]) / 2.0;
@@ -1257,7 +1258,6 @@ void surface_angle_distance::create_segmented_triangles(const std::vector<double
 								for (int x = 0; x < DIM3; x++){
 									segmented_triangles[n / 3].sphere_center[x] = midpoint[x] - segmented_triangles[n / 3].normal_ab[x] * (vector_distance);
 								}
-
 							}
 						}
 

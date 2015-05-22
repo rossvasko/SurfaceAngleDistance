@@ -56,10 +56,10 @@ TriangleCellIntersection::TriangleCellIntersection(const std::vector<double> & p
 					triangle_points[3 * m + p] = (points[3 * simplices[n + m] + p]);
 				}
 			}
+
 			//Find the boxes the triangles intersects
 			std::vector<int> boxes_intersected;
 			find_boxes_triangle_intersects(triangle_points, boxes_intersected);
-
 			average_boxes += boxes_intersected.size();
 
 			//Storing the simplex id to the corresponding list
@@ -80,7 +80,6 @@ TriangleCellIntersection::TriangleCellIntersection(const std::vector<double> & p
 					list_of_intersecting_simplices[sup_index].non_empty = true;
 					list_of_intersecting_simplices[sup_index].sub_grid = new std::vector<int>[sub_resolution * sub_resolution * sub_resolution];
 				}
-
 				((std::vector<int>*)list_of_intersecting_simplices[sup_index].sub_grid)[sub_index].push_back(n / 3);
 			}
 		}
@@ -124,8 +123,6 @@ void TriangleCellIntersection::find_boxes_triangle_intersects(const double trian
 			triangle_maxes[n] = triangle_points[n];
 			triangle_mins[n] = triangle_points[n];
 		}
-
-
 
 		//Finding mins and maxes
 		//Looping through rest of points
