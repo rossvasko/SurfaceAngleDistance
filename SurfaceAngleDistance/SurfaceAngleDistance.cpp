@@ -1253,7 +1253,10 @@ void surface_angle_distance::create_segmented_triangles(const std::vector<double
 									midpoint[x] = (segmented_triangles[n / 3].boundary_points[x] + segmented_triangles[n / 3].boundary_points[x + 3]) / 2.0;
 								}
 
-								double vector_distance = sqrt(pow(sphere_radius, 2) - pow(segmented_triangles[n / 3].ab_mag / 2, 2));
+
+								double vector_distance = pow(sphere_radius, 2) - pow(segmented_triangles[n / 3].ab_mag / 2, 2);
+								vector_distance = max(vector_distance, 0);
+								vector_distance = sqrt(vector_distance);
 
 								for (int x = 0; x < DIM3; x++){
 									segmented_triangles[n / 3].sphere_center[x] = midpoint[x] - segmented_triangles[n / 3].normal_ab[x] * (vector_distance);
